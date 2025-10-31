@@ -3,9 +3,12 @@
 ## Description
 The whole purpose of the operator is to annotate ingress objects with ``nginx.ingress.kubernetes.io/whitelist-source-range`` with ip-addresses from applied network policies.
 
+**Note**: The Ingress object reflects any changes in network policies.
+
 **Valid Annotations**:
-``networkpolicies.networking.k8s.io/policy``
-``networkpolicies.networking.k8s.io/whitelist``
+1. ``networkpolicies.networking.k8s.io/policy`` - the value should point to the name of the ``networkpolicies.networking.k8s.io``.
+2. ``networkpolicies.networking.k8s.io/whitelist`` - the value should be a valid prefix, f.ex ``10.0.0.1/32``.
+**Note**: Both annotations supports multiple values by comma separation.
 
 ## Getting Started
 
@@ -15,7 +18,7 @@ The whole purpose of the operator is to annotate ingress objects with ``nginx.in
 
 ### To Deploy on the cluster
 
-**ArgoCD application definition**
+**ArgoCD application definition**:
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
