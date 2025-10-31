@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: ingressnetworkpolicy-operator-controller-manager-metrics-service
+  name: ingressnetworkpolicy-controller-manager-metrics-service
   namespace: {{ .Values.namespace | default .Release.Namespace }}
   labels:
     {{- include "chart.labels" . | nindent 4 }}

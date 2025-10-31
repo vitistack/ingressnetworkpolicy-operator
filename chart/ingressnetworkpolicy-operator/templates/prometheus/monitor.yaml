@@ -16,7 +16,7 @@ spec:
       bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       tlsConfig:
         {{- if .Values.certmanager.enable }}
-        serverName: ingressnetworkpolicy-operator-controller-manager-metrics-service.{{ .Values.namespace | default .Release.Namespace }}.svc
+        serverName: ingressnetworkpolicy-controller-manager-metrics-service.{{ .Values.namespace | default .Release.Namespace }}.svc
         # Apply secure TLS configuration with cert-manager
         insecureSkipVerify: false
         ca:

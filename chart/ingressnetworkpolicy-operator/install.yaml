@@ -578,7 +578,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: ingressnetworkpolicy-operator
     control-plane: controller-manager
-  name: ingressnetworkpolicy-operator-controller-manager-metrics-service
+  name: ingressnetworkpolicy-controller-manager-metrics-service
   namespace: ingressnetworkpolicy-operator-system
 spec:
   ports:

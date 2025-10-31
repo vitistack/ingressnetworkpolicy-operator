@@ -1,5 +1,5 @@
 # [NAMESPACE]: Namespace where the operator will be deployed
-namespace: ingressnetworkpolicy-operator-system
+namespace: ingressnetworkpolicy-system
 
 # [MANAGER]: Manager Deployment Configurations
 controllerManager:
