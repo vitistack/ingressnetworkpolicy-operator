@@ -18,13 +18,16 @@ package controller
 
 import (
 	"context"
+	"reflect"
+	"strings"
 
+	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	ingressnetworkpoliciesv1 "github.com/vitistack/ingressnetworkpolicy-operator/api/v1"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // IngressReconciler reconciles a Ingress object
@@ -33,7 +36,7 @@ type IngressReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=ingressnetworkpolicies.vitistack.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ingressnetworkpolicies.vitistack.io,resources=ingresses,verbs=get;list;watch;create;update
 // +kubebuilder:rbac:groups=ingressnetworkpolicies.vitistack.io,resources=ingresses/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=ingressnetworkpolicies.vitistack.io,resources=ingresses/finalizers,verbs=update
 
@@ -47,17 +50,113 @@ type IngressReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.22.1/pkg/reconcile
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = logf.FromContext(ctx)
+	log := logf.FromContext(ctx)
 
-	// TODO(user): your logic here
+	log.Info("Reconciling Ingress", "Ingress.Namespace", req.Namespace, "Ingress.Name", req.Name)
+
+	// Fetch the NetworkPolicy that triggered this reconciliation
+	var ingress v1.Ingress
+	if err := r.Get(ctx, req.NamespacedName, &ingress); err != nil {
+		log.Error(err, "unable to fetch Ingress")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	// Get Annotations from Ingress
+	annotationNetworkPolicy := ingress.GetAnnotations()[AnnotationNetworkPolicy]
+	annotationWhitelist := ingress.GetAnnotations()[AnnotationWhitelist]
+
+	// Create slices from annotations
+	sliceNetworkPolicy := filterSliceFromString(strings.Split(annotationNetworkPolicy, ","))
+	sliceWhitelist := filterSliceFromString(strings.Split(annotationWhitelist, ","))
+
+	// Get each NetworkPolicy and extract CIDRs
+	var cidrs []string
+	for _, networkPolicy := range sliceNetworkPolicy {
+
+		processNetworkPolicy := v1.NetworkPolicy{}
+		err := r.Get(ctx, client.ObjectKey{
+			Namespace: DefaultNamespace,
+			Name:      networkPolicy,
+		}, &processNetworkPolicy)
+
+		if err != nil {
+			log.Error(err, "unable to fetch NetworkPolicy for Ingress", "Ingress.Name", ingress.Name, "ExpectedPolicy", networkPolicy)
+			continue
+		}
+
+		// Extract CIDRs from NetworkPolicy and append to list
+		cidrs = append(cidrs, extractCIDRsFromNetworkPolicy(&processNetworkPolicy, cidrs)...)
+	}
+
+	// Append valid CIDRs from Whitelist annotation
+	for _, cidr := range sliceWhitelist {
+		if checkValidCIDR(cidr) {
+			cidrs = append(cidrs, cidr)
+		}
+	}
+
+	if len(cidrs) > 0 {
+
+		// Remove duplicates and sort
+		compactSortedCIDRs := sortSlice(cidrs)
+
+		// Update Ingress annotation
+		ingress.Annotations[AnnotationNginxWhitelist] = strings.Join(compactSortedCIDRs, ",")
+
+		// Validate annotations before updating
+		err := validateAnnotations(ingress.Annotations)
+		if err != nil {
+			log.Error(err, "invalid annotations for Ingress", "Ingress.Name", ingress.Name)
+			return ctrl.Result{}, err
+		}
+
+		// Update Ingress
+		if err := r.Update(ctx, &ingress); err != nil {
+			log.Error(err, "unable to update Ingress annotation", "Ingress.Name", ingress.Name)
+			return ctrl.Result{}, err
+		}
+	} else {
+		// Remove NGINX annotation if no CIDRs are found
+		if _, exists := ingress.Annotations[AnnotationNginxWhitelist]; exists {
+			delete(ingress.Annotations, AnnotationNginxWhitelist)
+
+			// Update Ingress
+			if err := r.Update(ctx, &ingress); err != nil {
+				log.Error(err, "unable to remove Ingress annotation", "Ingress.Name", ingress.Name)
+				return ctrl.Result{}, err
+			}
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
+
+	// Predicate that filters updates where only annotations changed
+	annotationChangedPredicate := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+
+			oldObjAnnotationNetworkPolicy := e.ObjectOld.GetAnnotations()[AnnotationNetworkPolicy]
+			newObjAnnotationNetworkPolicy := e.ObjectNew.GetAnnotations()[AnnotationNetworkPolicy]
+			oldObjAnnotationWhitelist := e.ObjectOld.GetAnnotations()[AnnotationWhitelist]
+			newObjAnnotationWhitelist := e.ObjectNew.GetAnnotations()[AnnotationWhitelist]
+
+			// Trigger reconciliation if relevant annotations have changed
+			return !reflect.DeepEqual(oldObjAnnotationNetworkPolicy, newObjAnnotationNetworkPolicy) ||
+				!reflect.DeepEqual(oldObjAnnotationWhitelist, newObjAnnotationWhitelist)
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			// Trigger reconciliation if relevant annotations are present
+			return e.Object.GetAnnotations()[AnnotationNetworkPolicy] != "" ||
+				e.Object.GetAnnotations()[AnnotationWhitelist] != ""
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&ingressnetworkpoliciesv1.Ingress{}).
+		For(&v1.Ingress{}).
 		Named("ingress").
+		WithEventFilter(annotationChangedPredicate).
 		Complete(r)
 }
