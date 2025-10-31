@@ -38,6 +38,12 @@ jobs:
         env:
           GOPRIVATE: github.com/vitistack
 
+      - name: Setup envtest binaries
+        run: |
+          go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+          KUBEBUILDER_ASSETS=$(setup-envtest use -p path 1.30.x)
+          export KUBEBUILDER_ASSETS
+
       - name: Build
         run: go build -v ./...
 
