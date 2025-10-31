@@ -19,30 +19,33 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure Git for private repos
         run: |
           git config --global url.https://$GH_TOKEN@github.com/.insteadOf https://github.com/
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
           # This will cache both Go modules and build cache
           cache-dependency-path: go.sum
 
+      # Cache bin folder with tools and binaries
+      - name: Cache bin folder
+        uses: actions/cache@v4
+        with:
+          path: bin
+          key: ${{ runner.os }}-bin-${{ hashFiles('go.mod', 'go.sum', 'Makefile') }}
+          restore-keys: |
+            ${{ runner.os }}-bin-
+
       - name: Install dependencies
         run: go mod download
         env:
           GOPRIVATE: github.com/vitistack
-
-      - name: Setup envtest binaries
-        run: |
-          go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-          KUBEBUILDER_ASSETS=$(setup-envtest use -p path 1.30.x)
-          export KUBEBUILDER_ASSETS
 
       - name: Build
         run: go build -v ./...
@@ -50,8 +53,21 @@ jobs:
       - name: Lint (go vet)
         run: go vet ./...
 
+      - name: Setup test environment
+        run: |
+          if [ ! -d "bin/k8s" ] || [ -z "$(ls -A bin/k8s 2>/dev/null)" ]; then
+            echo "Setting up test environment..."
+            make test-setup
+          else
+            echo "Using cached test environment"
+            # Still run the manifests and generate steps to ensure we have up-to-date resources
+            make manifests generate
+          fi
+
       - name: Run tests
-        run: go test $(go list ./... | grep -v test)
+        run: |
+          make test
+          go tool cover -func=coverage.out
 
   security-scan:
     name: Security Scan
@@ -69,7 +85,7 @@ jobs:
           git config --global url.https://$GH_TOKEN@github.com/.insteadOf https://github.com/
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
