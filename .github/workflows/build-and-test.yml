@@ -53,21 +53,20 @@ jobs:
       - name: Lint (go vet)
         run: go vet ./...
 
-      - name: Setup test environment
+      - name: Install setup-envtest
         run: |
-          if [ ! -d "bin/k8s" ] || [ -z "$(ls -A bin/k8s 2>/dev/null)" ]; then
-            echo "Setting up test environment..."
-            make test-setup
-          else
-            echo "Using cached test environment"
-            # Still run the manifests and generate steps to ensure we have up-to-date resources
-            make manifests generate
-          fi
+          go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+      - name: Setup envtest binaries
+        id: envtest
+        run: |
+          # Choose Kubernetes version compatible with your controller-runtime version
+          ENVTEST_ASSETS=$(setup-envtest use -p path 1.30.x)
+          echo "KUBEBUILDER_ASSETS=$ENVTEST_ASSETS" >> $GITHUB_ENV
 
       - name: Run tests
         run: |
-          make test
-          go tool cover -func=coverage.out
+          go test $(go list ./... | grep -v test) -coverprofile=coverage.out
 
   security-scan:
     name: Security Scan
