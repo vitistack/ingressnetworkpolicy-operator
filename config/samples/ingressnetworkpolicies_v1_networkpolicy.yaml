@@ -1,0 +1,9 @@
+apiVersion: ingressnetworkpolicies.vitistack.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app.kubernetes.io/name: ingressnetworkpolicy-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: networkpolicy-sample
+spec:
+  # TODO(user): Add fields here
