@@ -5,7 +5,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - ingressnetworkpolicies.vitistack.io
+  - ""
   resources:
   - ingresses
   verbs:
@@ -15,30 +15,32 @@ rules:
   - update
   - watch
 - apiGroups:
-  - ingressnetworkpolicies.vitistack.io
+  - ""
   resources:
   - ingresses/finalizers
-  - networkpolicies/finalizers
   verbs:
   - update
 - apiGroups:
-  - ingressnetworkpolicies.vitistack.io
+  - ""
   resources:
   - ingresses/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - networkpolicies
   - networkpolicies/status
   verbs:
   - get
-  - patch
-  - update
-- apiGroups:
-  - ingressnetworkpolicies.vitistack.io
-  resources:
-  - networkpolicies
-  verbs:
-  - create
-  - delete
-  - get
   - list
-  - patch
-  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - networkpolicies/finalizers
+  verbs:
+  - list
   - watch
