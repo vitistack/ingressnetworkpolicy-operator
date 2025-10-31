@@ -7,7 +7,7 @@ The whole purpose of the operator is to annotate ingress objects with ``nginx.in
 
 **Valid Annotations**:
 1. ``networkpolicies.networking.k8s.io/policy`` 
-   - the value should point to the name of the ``networkpolicies.networking.k8s.io`` object.
+   - the value should point to the name of the ``networkpolicies.networking.k8s.io`` object from namespace ``networkpolicies``.
 2. ``networkpolicies.networking.k8s.io/whitelist`` 
    - gives you the ability to add custom ip-addresses by choice in addition to applied network policies.
    - require valid prefix, f.ex ``10.0.0.1/32``.
