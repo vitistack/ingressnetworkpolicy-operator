@@ -8,7 +8,7 @@ metadata:
   name: ingressnetworkpolicy-operator-manager-role
 rules:
 - apiGroups:
-  - ""
+  - "networking.k8s.io"
   resources:
   - ingresses
   verbs:
@@ -18,13 +18,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - ""
+  - "networking.k8s.io"
   resources:
   - ingresses/finalizers
   verbs:
   - update
 - apiGroups:
-  - ""
+  - "networking.k8s.io"
   resources:
   - ingresses/status
   verbs:
@@ -32,7 +32,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - ""
+  - "networking.k8s.io"
   resources:
   - networkpolicies
   - networkpolicies/status
@@ -41,7 +41,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - ""
+  - "networking.k8s.io"
   resources:
   - networkpolicies/finalizers
   verbs:

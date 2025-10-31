@@ -36,9 +36,9 @@ type NetworkPolicyReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups="",resources=networkpolicies,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=networkpolicies/status,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=networkpolicies/finalizers,verbs=list;watch
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=get;list;watch
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies/status,verbs=get;list;watch
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies/finalizers,verbs=list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
