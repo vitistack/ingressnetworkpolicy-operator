@@ -85,9 +85,16 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 				matchedIngresses = append(matchedIngresses, ingress)
 			}
 		}
+
+		if _, exists := annotation[AnnotationDenyListNetworkPolicy]; exists {
+			annotationList := filterSliceFromString(strings.Split(annotation[AnnotationDenyListNetworkPolicy], ","))
+			if slices.Contains(annotationList, triggeredNetworkPolicy.Name) {
+				matchedIngresses = append(matchedIngresses, ingress)
+			}
+		}
 	}
 
-	// No Ingress matched the NetworkPolicy
+	// No Ingresses matched the NetworkPolicy, stop reconciliation!
 
 	if len(matchedIngresses) == 0 {
 		log.Info("No Ingress matched the NetworkPolicy", "NetworkPolicy.Name", triggeredNetworkPolicy.Name)
@@ -97,78 +104,60 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// Update annotation on matched Ingress with CIDRs from NetworkPolicies
 	for _, ingress := range matchedIngresses {
 
-		// Declare variables
-		var customWhitelist []string
-		var cidrs []string
+		// Get Annotations from Ingress
+		AnnotationWhiteListNetworkPolicy := ingress.GetAnnotations()[AnnotationWhiteListNetworkPolicy]
+		AnnotationDenyListNetworkPolicy := ingress.GetAnnotations()[AnnotationDenyListNetworkPolicy]
+		annotationWhitelist := ingress.GetAnnotations()[AnnotationWhitelist]
+		AnnotationDenylist := ingress.GetAnnotations()[AnnotationDenylist]
 
-		// Get annotations from Ingress
-		annotation := ingress.GetAnnotations()
-		networkPolicies := filterSliceFromString(strings.Split(annotation[AnnotationWhiteListNetworkPolicy], ","))
+		// Create slices from annotations
+		sliceWhitelistNetworkPolicy := filterSliceFromString(strings.Split(AnnotationWhiteListNetworkPolicy, ","))
+		sliceDenyListNetworkPolicy := filterSliceFromString(strings.Split(AnnotationDenyListNetworkPolicy, ","))
+		sliceWhitelist := filterSliceFromString(strings.Split(annotationWhitelist, ","))
+		sliceDenylist := filterSliceFromString(strings.Split(AnnotationDenylist, ","))
 
-		// Check for custom whitelist annotation
-		if _, exists := annotation[AnnotationWhitelist]; exists {
-			customWhitelist = filterSliceFromString(strings.Split(annotation[AnnotationWhitelist], ","))
+		// Create CIDR Lists
+		var cidrWhitelist []string
+		var cidrDenylist []string
+
+		if len(sliceWhitelistNetworkPolicy) > 0 || len(sliceWhitelist) > 0 {
+			cidrWhitelist = createCidrList(ctx, ingress, sliceWhitelistNetworkPolicy, sliceWhitelist)
 		}
 
-		// Get each NetworkPolicy and extract CIDRs
-		for _, networkPolicy := range networkPolicies {
-			processNetworkPolicy := v1.NetworkPolicy{}
-			err := r.Get(ctx, client.ObjectKey{
-				Namespace: DefaultNamespace,
-				Name:      networkPolicy,
-			}, &processNetworkPolicy)
-
-			if err != nil {
-				log.Error(err, "unable to fetch NetworkPolicy for Ingress", "Ingress.Name", ingress.Name, "ExpectedPolicy", networkPolicy)
-				continue
-			}
-
-			// Extract CIDRs from NetworkPolicy and append to list
-			cidrs = append(cidrs, extractCIDRsFromNetworkPolicy(&processNetworkPolicy, cidrs)...)
+		if len(sliceDenyListNetworkPolicy) > 0 || len(sliceDenylist) > 0 {
+			cidrDenylist = createCidrList(ctx, ingress, sliceDenyListNetworkPolicy, sliceDenylist)
 		}
 
-		// Append valid CIDRs from Whitelist annotation
-		for _, cidr := range customWhitelist {
-			if checkValidCIDR(cidr) {
-				cidrs = append(cidrs, cidr)
-			}
-		}
+		// Update Ingress Annotations
 
-		if len(cidrs) > 0 {
-
-			// Remove duplicates and sort
-			compactSortedCIDRs := sortSlice(cidrs)
-
-			// Update Ingress annotation
-			ingress.Annotations[AnnotationNginxWhitelist] = strings.Join(compactSortedCIDRs, ",")
-
-			// Validate annotations before updating
-			err := validateAnnotations(ingress.Annotations)
-			if err != nil {
-				log.Error(err, "invalid annotations for Ingress", "Ingress.Name", ingress.Name)
-				return ctrl.Result{}, err
-			}
-
-			// Update Ingress
-			if err := r.Update(ctx, &ingress); err != nil {
-				log.Error(err, "unable to update Ingress annotation", "Ingress.Name", ingress.Name)
-				return ctrl.Result{}, err
-			}
+		if len(cidrWhitelist) > 0 {
+			ingress.Annotations[AnnotationNginxWhitelist] = strings.Join(cidrWhitelist, ",")
 		} else {
-			// Remove NGINX annotation if no CIDRs are found
-			if _, exists := ingress.Annotations[AnnotationNginxWhitelist]; exists {
-				delete(ingress.Annotations, AnnotationNginxWhitelist)
+			delete(ingress.Annotations, AnnotationNginxWhitelist)
+		}
 
-				// Update Ingress
-				if err := r.Update(ctx, &ingress); err != nil {
-					log.Error(err, "unable to remove Ingress annotation", "Ingress.Name", ingress.Name)
-					return ctrl.Result{}, err
-				}
-			}
+		if len(cidrDenylist) > 0 {
+			ingress.Annotations[AnnotationNginxDenylist] = strings.Join(cidrDenylist, ",")
+		} else {
+			delete(ingress.Annotations, AnnotationNginxDenylist)
+		}
+
+		// Validate annotations before updating
+		err := validateAnnotations(ingress.Annotations)
+		if err != nil {
+			log.Error(err, "invalid annotations for Ingress", "Ingress.Name", ingress.Name)
+			return ctrl.Result{}, err
+		}
+
+		// Update Ingress
+		if err := r.Update(ctx, &ingress); err != nil {
+			log.Error(err, "unable to remove Ingress annotation", "Ingress.Name", ingress.Name)
+			return ctrl.Result{}, err
 		}
 
 		// Log successful update
 		log.Info("Updated Ingress annotation", "Ingress.Name", ingress.Name)
+
 	}
 
 	return ctrl.Result{}, nil

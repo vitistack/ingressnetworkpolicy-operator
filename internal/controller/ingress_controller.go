@@ -78,11 +78,11 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	var cidrDenylist []string
 
 	if len(sliceWhitelistNetworkPolicy) > 0 || len(sliceWhitelist) > 0 {
-		cidrWhitelist = createCidrList(ctx, r, ingress, sliceWhitelistNetworkPolicy, sliceWhitelist)
+		cidrWhitelist = createCidrList(ctx, ingress, sliceWhitelistNetworkPolicy, sliceWhitelist)
 	}
 
 	if len(sliceDenyListNetworkPolicy) > 0 || len(sliceDenylist) > 0 {
-		cidrDenylist = createCidrList(ctx, r, ingress, sliceDenyListNetworkPolicy, sliceDenylist)
+		cidrDenylist = createCidrList(ctx, ingress, sliceDenyListNetworkPolicy, sliceDenylist)
 	}
 
 	// Update Ingress Annotations
@@ -111,6 +111,9 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		log.Error(err, "unable to remove Ingress annotation", "Ingress.Name", ingress.Name)
 		return ctrl.Result{}, err
 	}
+
+	// Log successful update
+	log.Info("Updated Ingress annotation", "Ingress.Name", ingress.Name)
 
 	return ctrl.Result{}, nil
 }
