@@ -144,6 +144,10 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				e.Object.GetAnnotations()[AnnotationDenyListNetworkPolicy] != "" ||
 				e.Object.GetAnnotations()[AnnotationDenylist] != ""
 		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// No reconciliation on delete
+			return false
+		},
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).

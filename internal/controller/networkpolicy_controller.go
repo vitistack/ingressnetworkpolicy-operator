@@ -186,7 +186,7 @@ func (r *NetworkPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return e.Object.GetNamespace() == DefaultNamespace
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			return e.Object.GetNamespace() == DefaultNamespace
+			return false
 		},
 	}
 
