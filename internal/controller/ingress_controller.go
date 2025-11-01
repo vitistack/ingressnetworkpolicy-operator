@@ -62,71 +62,58 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Get Annotations from Ingress
-	annotationNetworkPolicy := ingress.GetAnnotations()[AnnotationNetworkPolicy]
+	AnnotationWhiteListNetworkPolicy := ingress.GetAnnotations()[AnnotationWhiteListNetworkPolicy]
+	AnnotationDenyListNetworkPolicy := ingress.GetAnnotations()[AnnotationDenyListNetworkPolicy]
 	annotationWhitelist := ingress.GetAnnotations()[AnnotationWhitelist]
+	AnnotationDenylist := ingress.GetAnnotations()[AnnotationDenylist]
 
 	// Create slices from annotations
-	sliceNetworkPolicy := filterSliceFromString(strings.Split(annotationNetworkPolicy, ","))
+	sliceWhitelistNetworkPolicy := filterSliceFromString(strings.Split(AnnotationWhiteListNetworkPolicy, ","))
+	sliceDenyListNetworkPolicy := filterSliceFromString(strings.Split(AnnotationDenyListNetworkPolicy, ","))
 	sliceWhitelist := filterSliceFromString(strings.Split(annotationWhitelist, ","))
+	sliceDenylist := filterSliceFromString(strings.Split(AnnotationDenylist, ","))
 
-	// Get each NetworkPolicy and extract CIDRs
-	var cidrs []string
-	for _, networkPolicy := range sliceNetworkPolicy {
+	// Create CIDR Lists
+	var cidrWhitelist []string
+	var cidrDenylist []string
 
-		processNetworkPolicy := v1.NetworkPolicy{}
-		err := r.Get(ctx, client.ObjectKey{
-			Namespace: DefaultNamespace,
-			Name:      networkPolicy,
-		}, &processNetworkPolicy)
-
-		if err != nil {
-			log.Error(err, "unable to fetch NetworkPolicy for Ingress", "Ingress.Name", ingress.Name, "ExpectedPolicy", networkPolicy)
-			continue
-		}
-
-		// Extract CIDRs from NetworkPolicy and append to list
-		cidrs = append(cidrs, extractCIDRsFromNetworkPolicy(&processNetworkPolicy, cidrs)...)
+	if len(sliceWhitelistNetworkPolicy) > 0 || len(sliceWhitelist) > 0 {
+		cidrWhitelist = createCidrList(ctx, ingress, sliceWhitelistNetworkPolicy, sliceWhitelist)
 	}
 
-	// Append valid CIDRs from Whitelist annotation
-	for _, cidr := range sliceWhitelist {
-		if checkValidCIDR(cidr) {
-			cidrs = append(cidrs, cidr)
-		}
+	if len(sliceDenyListNetworkPolicy) > 0 || len(sliceDenylist) > 0 {
+		cidrDenylist = createCidrList(ctx, ingress, sliceDenyListNetworkPolicy, sliceDenylist)
 	}
 
-	if len(cidrs) > 0 {
+	// Update Ingress Annotations
 
-		// Remove duplicates and sort
-		compactSortedCIDRs := sortSlice(cidrs)
-
-		// Update Ingress annotation
-		ingress.Annotations[AnnotationNginxWhitelist] = strings.Join(compactSortedCIDRs, ",")
-
-		// Validate annotations before updating
-		err := validateAnnotations(ingress.Annotations)
-		if err != nil {
-			log.Error(err, "invalid annotations for Ingress", "Ingress.Name", ingress.Name)
-			return ctrl.Result{}, err
-		}
-
-		// Update Ingress
-		if err := r.Update(ctx, &ingress); err != nil {
-			log.Error(err, "unable to update Ingress annotation", "Ingress.Name", ingress.Name)
-			return ctrl.Result{}, err
-		}
+	if len(cidrWhitelist) > 0 {
+		ingress.Annotations[AnnotationNginxWhitelist] = strings.Join(cidrWhitelist, ",")
 	} else {
-		// Remove NGINX annotation if no CIDRs are found
-		if _, exists := ingress.Annotations[AnnotationNginxWhitelist]; exists {
-			delete(ingress.Annotations, AnnotationNginxWhitelist)
-
-			// Update Ingress
-			if err := r.Update(ctx, &ingress); err != nil {
-				log.Error(err, "unable to remove Ingress annotation", "Ingress.Name", ingress.Name)
-				return ctrl.Result{}, err
-			}
-		}
+		delete(ingress.Annotations, AnnotationNginxWhitelist)
 	}
+
+	if len(cidrDenylist) > 0 {
+		ingress.Annotations[AnnotationNginxDenylist] = strings.Join(cidrDenylist, ",")
+	} else {
+		delete(ingress.Annotations, AnnotationNginxDenylist)
+	}
+
+	// Validate annotations before updating
+	err := validateAnnotations(ingress.Annotations)
+	if err != nil {
+		log.Error(err, "invalid annotations for Ingress", "Ingress.Name", ingress.Name)
+		return ctrl.Result{}, err
+	}
+
+	// Update Ingress
+	if err := r.Update(ctx, &ingress); err != nil {
+		log.Error(err, "unable to remove Ingress annotation", "Ingress.Name", ingress.Name)
+		return ctrl.Result{}, err
+	}
+
+	// Log successful update
+	log.Info("Updated Ingress annotation", "Ingress.Name", ingress.Name)
 
 	return ctrl.Result{}, nil
 }
@@ -138,19 +125,31 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	annotationChangedPredicate := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 
-			oldObjAnnotationNetworkPolicy := e.ObjectOld.GetAnnotations()[AnnotationNetworkPolicy]
-			newObjAnnotationNetworkPolicy := e.ObjectNew.GetAnnotations()[AnnotationNetworkPolicy]
+			oldObjAnnotationWhiteListNetworkPolicy := e.ObjectOld.GetAnnotations()[AnnotationWhiteListNetworkPolicy]
+			newObjAnnotationWhiteListNetworkPolicy := e.ObjectNew.GetAnnotations()[AnnotationWhiteListNetworkPolicy]
+			oldObjAnnotationDenyListNetworkPolicy := e.ObjectOld.GetAnnotations()[AnnotationDenyListNetworkPolicy]
+			newObjAnnotationDenyListNetworkPolicy := e.ObjectNew.GetAnnotations()[AnnotationDenyListNetworkPolicy]
 			oldObjAnnotationWhitelist := e.ObjectOld.GetAnnotations()[AnnotationWhitelist]
 			newObjAnnotationWhitelist := e.ObjectNew.GetAnnotations()[AnnotationWhitelist]
+			oldObjAnnotationDenylist := e.ObjectOld.GetAnnotations()[AnnotationDenylist]
+			newObjAnnotationDenylist := e.ObjectNew.GetAnnotations()[AnnotationDenylist]
 
 			// Trigger reconciliation if relevant annotations have changed
-			return !reflect.DeepEqual(oldObjAnnotationNetworkPolicy, newObjAnnotationNetworkPolicy) ||
-				!reflect.DeepEqual(oldObjAnnotationWhitelist, newObjAnnotationWhitelist)
+			return !reflect.DeepEqual(oldObjAnnotationWhiteListNetworkPolicy, newObjAnnotationWhiteListNetworkPolicy) ||
+				!reflect.DeepEqual(oldObjAnnotationWhitelist, newObjAnnotationWhitelist) ||
+				!reflect.DeepEqual(oldObjAnnotationDenyListNetworkPolicy, newObjAnnotationDenyListNetworkPolicy) ||
+				!reflect.DeepEqual(oldObjAnnotationDenylist, newObjAnnotationDenylist)
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
 			// Trigger reconciliation if relevant annotations are present
-			return e.Object.GetAnnotations()[AnnotationNetworkPolicy] != "" ||
-				e.Object.GetAnnotations()[AnnotationWhitelist] != ""
+			return e.Object.GetAnnotations()[AnnotationWhiteListNetworkPolicy] != "" ||
+				e.Object.GetAnnotations()[AnnotationWhitelist] != "" ||
+				e.Object.GetAnnotations()[AnnotationDenyListNetworkPolicy] != "" ||
+				e.Object.GetAnnotations()[AnnotationDenylist] != ""
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// No reconciliation on delete
+			return false
 		},
 	}
 
