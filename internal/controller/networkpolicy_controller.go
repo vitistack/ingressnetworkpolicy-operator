@@ -79,8 +79,8 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			continue
 		}
 
-		if _, exists := annotation[AnnotationNetworkPolicy]; exists {
-			annotationList := filterSliceFromString(strings.Split(annotation[AnnotationNetworkPolicy], ","))
+		if _, exists := annotation[AnnotationWhiteListNetworkPolicy]; exists {
+			annotationList := filterSliceFromString(strings.Split(annotation[AnnotationWhiteListNetworkPolicy], ","))
 			if slices.Contains(annotationList, triggeredNetworkPolicy.Name) {
 				matchedIngresses = append(matchedIngresses, ingress)
 			}
@@ -103,7 +103,7 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 		// Get annotations from Ingress
 		annotation := ingress.GetAnnotations()
-		networkPolicies := filterSliceFromString(strings.Split(annotation[AnnotationNetworkPolicy], ","))
+		networkPolicies := filterSliceFromString(strings.Split(annotation[AnnotationWhiteListNetworkPolicy], ","))
 
 		// Check for custom whitelist annotation
 		if _, exists := annotation[AnnotationWhitelist]; exists {
@@ -183,6 +183,9 @@ func (r *NetworkPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return e.ObjectNew.GetNamespace() == DefaultNamespace
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
+			return e.Object.GetNamespace() == DefaultNamespace
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
 			return e.Object.GetNamespace() == DefaultNamespace
 		},
 	}

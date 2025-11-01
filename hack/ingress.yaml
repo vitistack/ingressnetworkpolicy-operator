@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-ingress
+  annotations:
+    # This annotation is specific to the NGINX Ingress Controller
+    # and rewrites the target path to the root (/) for the backend service.
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx # Specifies the Ingress Controller to use (e.g., NGINX Ingress Controller)
+  rules:
+  - host: example.com # Optional: if omitted, it applies to all hosts
+    http:
+      paths:
+      - path: /apple # Path to match for incoming requests
+        pathType: Prefix # Specifies how the path should be matched (Prefix, Exact, ImplementationSpecific)
+        backend:
+          service:
+            name: apple-service # Name of the target Kubernetes Service
+            port:
+              number: 80 # Port of the target Kubernetes Service
+      - path: /banana
+        pathType: Prefix
+        backend:
+          service:
+            name: banana-service
+            port:
+              number: 80
