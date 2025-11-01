@@ -72,7 +72,8 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	// Iterate through all Ingress and find ingress that reference the NetworkPolicy
 	for _, ingress := range allIngresses.Items {
-		log.Info("Found Ingress", "Ingress.Name", ingress.Name)
+
+		var found bool
 
 		annotation := ingress.GetAnnotations()
 		if annotation == nil {
@@ -83,6 +84,7 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			annotationList := filterSliceFromString(strings.Split(annotation[AnnotationWhiteListNetworkPolicy], ","))
 			if slices.Contains(annotationList, triggeredNetworkPolicy.Name) {
 				matchedIngresses = append(matchedIngresses, ingress)
+				found = true
 			}
 		}
 
@@ -90,7 +92,12 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 			annotationList := filterSliceFromString(strings.Split(annotation[AnnotationDenyListNetworkPolicy], ","))
 			if slices.Contains(annotationList, triggeredNetworkPolicy.Name) {
 				matchedIngresses = append(matchedIngresses, ingress)
+				found = true
 			}
+		}
+
+		if found {
+			log.Info("Matched Ingress found for NetworkPolicy", "Ingress.Name", ingress.Name, "NetworkPolicy.Name", triggeredNetworkPolicy.Name)
 		}
 	}
 
