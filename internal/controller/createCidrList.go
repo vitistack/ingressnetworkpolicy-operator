@@ -4,24 +4,16 @@ import (
 	"context"
 
 	v1 "k8s.io/api/networking/v1"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func createCidrList(ctx context.Context, ingress v1.Ingress, policyList []string, customList []string) []string {
+type Getter interface {
+	Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
+}
+
+func createCidrList(ctx context.Context, r Getter, ingress v1.Ingress, policyList []string, customList []string) []string {
 	log := logf.FromContext(ctx)
-
-	// Create Kubernetes client
-	cfg, err := ctrl.GetConfig()
-	if err != nil {
-		log.Error(err, "unable to get config")
-	}
-
-	c, err := client.New(cfg, client.Options{})
-	if err != nil {
-		log.Error(err, "unable to create client")
-	}
 
 	var cidrs []string
 
@@ -31,7 +23,7 @@ func createCidrList(ctx context.Context, ingress v1.Ingress, policyList []string
 
 		processNetworkPolicy := v1.NetworkPolicy{}
 
-		err = c.Get(ctx, client.ObjectKey{
+		err := r.Get(ctx, client.ObjectKey{
 			Namespace: DefaultNamespace,
 			Name:      networkPolicy,
 		}, &processNetworkPolicy)
