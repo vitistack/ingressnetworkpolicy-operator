@@ -128,11 +128,11 @@ func (r *NetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		var cidrDenylist []string
 
 		if len(sliceWhitelistNetworkPolicy) > 0 || len(sliceWhitelist) > 0 {
-			cidrWhitelist = createCidrList(ctx, ingress, sliceWhitelistNetworkPolicy, sliceWhitelist)
+			cidrWhitelist = createCidrList(ctx, r, ingress, sliceWhitelistNetworkPolicy, sliceWhitelist)
 		}
 
 		if len(sliceDenyListNetworkPolicy) > 0 || len(sliceDenylist) > 0 {
-			cidrDenylist = createCidrList(ctx, ingress, sliceDenyListNetworkPolicy, sliceDenylist)
+			cidrDenylist = createCidrList(ctx, r, ingress, sliceDenyListNetworkPolicy, sliceDenylist)
 		}
 
 		// Update Ingress Annotations
