@@ -1,7 +1,7 @@
 package controller
 
 const (
-	DefaultNamespace                 = "networkpolicies"
+	DefaultNamespace                 = "network-policies"
 	AnnotationNginxWhitelist         = "nginx.ingress.kubernetes.io/whitelist-source-range"
 	AnnotationNginxDenylist          = "nginx.ingress.kubernetes.io/denylist-source-range"
 	AnnotationWhiteListNetworkPolicy = "networking.k8s.io/whitelist-policy"
