@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: expose-nhn-office-client
-  namespace: networkpolicies
+  namespace: network-policies
 spec:
   ingress:
   - from:
