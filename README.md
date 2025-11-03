@@ -7,7 +7,7 @@ The whole purpose of the operator is to make sure that k8s network-policies can 
 
 **Valid Annotations**:
 1. ``networking.k8s.io/whitelist-policy`` || ``networking.k8s.io/denylist-policy``
-   - the value should point to the name of the ``networkpolicies.networking.k8s.io`` object from namespace ``networkpolicies``.
+   - the value should point to the name of the ``networkpolicies.networking.k8s.io`` object from namespace ``network-policies``.
 2. ``networkpolicies.networking.k8s.io/whitelist`` || ``networkpolicies.networking.k8s.io/denylist``
    - gives you the ability to add custom ip-addresses by choice in addition to applied network policies.
    - require valid prefix, f.ex ``10.0.0.1/32``.
@@ -18,8 +18,8 @@ The whole purpose of the operator is to make sure that k8s network-policies can 
 ## Getting Started
 
 ### Prerequisites
-- Create namespace ``networkpolicies`` in the cluster
-- Create ``networkpolicies.networking.k8s.io`` objects in namespace ``networkpolicies`` on demand!
+- Create namespace ``network-policies`` in the cluster
+- Create ``networkpolicies.networking.k8s.io`` objects in namespace ``network-policies`` on demand!
 
 ### To Deploy on the cluster
 
