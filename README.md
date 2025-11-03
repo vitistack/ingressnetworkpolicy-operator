@@ -1,7 +1,7 @@
 # IngressNetworkPolicy-Operator
 
 ## Description
-The whole purpose of the operator is to annotate ingress objects with ``nginx.ingress.kubernetes.io/whitelist-source-range`` with ip-addresses from applied network policies.
+The whole purpose of the operator is to make sure that k8s network-policies can be used as a dynamic input to ingress objects.
 
 **Note**: The Ingress object reflects any changes in network policies.
 
