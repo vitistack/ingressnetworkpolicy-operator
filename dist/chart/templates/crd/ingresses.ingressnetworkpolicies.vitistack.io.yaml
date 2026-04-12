@@ -1,23 +1,26 @@
----
+{{- if .Values.crd.enable }}
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
+    {{- if .Values.crd.keep }}
+    "helm.sh/resource-policy": keep
+    {{- end }}
     controller-gen.kubebuilder.io/version: v0.20.1
-  name: networkpolicies.ingressnetworkpolicies.vitistack.io
+  name: ingresses.ingressnetworkpolicies.vitistack.io
 spec:
   group: ingressnetworkpolicies.vitistack.io
   names:
-    kind: NetworkPolicy
-    listKind: NetworkPolicyList
-    plural: networkpolicies
-    singular: networkpolicy
+    kind: Ingress
+    listKind: IngressList
+    plural: ingresses
+    singular: ingress
   scope: Namespaced
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: NetworkPolicy is the Schema for the networkpolicies API
+        description: Ingress is the Schema for the ingresses API
         properties:
           apiVersion:
             description: |-
@@ -37,19 +40,19 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of NetworkPolicy
+            description: spec defines the desired state of Ingress
             properties:
               foo:
-                description: foo is an example field of NetworkPolicy. Edit networkpolicy_types.go
+                description: foo is an example field of Ingress. Edit ingress_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: status defines the observed state of NetworkPolicy
+            description: status defines the observed state of Ingress
             properties:
               conditions:
                 description: |-
-                  conditions represent the current state of the NetworkPolicy resource.
+                  conditions represent the current state of the Ingress resource.
                   Each condition has a unique type and reflects the status of a specific aspect of the resource.
 
                   Standard condition types include:
@@ -124,3 +127,4 @@ spec:
     storage: true
     subresources:
       status: {}
+{{- end }}

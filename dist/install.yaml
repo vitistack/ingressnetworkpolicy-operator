@@ -11,7 +11,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: ingresses.ingressnetworkpolicies.vitistack.io
 spec:
   group: ingressnetworkpolicies.vitistack.io
@@ -137,7 +137,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.19.0
+    controller-gen.kubebuilder.io/version: v0.20.1
   name: networkpolicies.ingressnetworkpolicies.vitistack.io
 spec:
   group: ingressnetworkpolicies.vitistack.io
@@ -386,7 +386,7 @@ metadata:
   name: ingressnetworkpolicy-operator-manager-role
 rules:
 - apiGroups:
-  - ""
+  - networking.k8s.io
   resources:
   - ingresses
   verbs:
@@ -396,13 +396,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - ""
+  - networking.k8s.io
   resources:
   - ingresses/finalizers
   verbs:
   - update
 - apiGroups:
-  - ""
+  - networking.k8s.io
   resources:
   - ingresses/status
   verbs:
@@ -410,7 +410,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - ""
+  - networking.k8s.io
   resources:
   - networkpolicies
   - networkpolicies/status
@@ -419,7 +419,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - ""
+  - networking.k8s.io
   resources:
   - networkpolicies/finalizers
   verbs:
@@ -620,7 +620,7 @@ spec:
         - --health-probe-bind-address=:8081
         command:
         - /manager
-        image: ncr.sky.nhn.no/ghcr/vitistack/ingressnetworkpolicy-operator:latest
+        image: controller:latest
         livenessProbe:
           httpGet:
             path: /healthz

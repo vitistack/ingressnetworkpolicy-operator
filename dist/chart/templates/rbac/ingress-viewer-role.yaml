@@ -1,0 +1,26 @@
+{{- if .Values.rbacHelpers.enable }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "ingressnetworkpolicy-operator.name" . }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  name: {{ include "ingressnetworkpolicy-operator.resourceName" (dict "suffix" "ingress-viewer-role" "context" $) }}
+rules:
+- apiGroups:
+  - ingressnetworkpolicies.vitistack.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ingressnetworkpolicies.vitistack.io
+  resources:
+  - ingresses/status
+  verbs:
+  - get
+{{- end }}
